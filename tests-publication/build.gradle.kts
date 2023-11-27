@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.gradle.tasks.*
  */
 
 plugins {
-    kotlin("multiplatform") version "1.9.21"
+    kotlin("multiplatform") version "1.9.10"
 }
 
 kotlin {
