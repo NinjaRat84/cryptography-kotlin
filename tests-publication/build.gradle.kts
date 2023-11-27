@@ -2,8 +2,14 @@
  * Copyright (c) 2023 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
+import org.jetbrains.kotlin.gradle.tasks.*
+
+/*
+ * Copyright (c) 2023 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ */
+
 plugins {
-    kotlin("multiplatform") version "1.9.10"
+    kotlin("multiplatform") version "1.9.21"
 }
 
 kotlin {
@@ -18,7 +24,11 @@ kotlin {
         linuxX64(),
         macosX64(),
         macosArm64(),
-    )
+    ).onEach {
+        it.binaries.executable {
+            entryPoint = "main"
+        }
+    }
 
     sourceSets {
         commonMain {
@@ -58,4 +68,8 @@ kotlin {
             getByName("${it.name}Test").dependsOn(nativeTest)
         }
     }
+}
+
+tasks.build {
+    dependsOn(tasks.withType<KotlinNativeLink>())
 }

@@ -23,13 +23,3 @@ class JustTest {
         assertEquals("a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e", digest)
     }
 }
-
-private const val hexCode = "0123456789ABCDEF"
-internal fun printHexBinary(data: ByteArray): String {
-    val r = StringBuilder(data.size * 2)
-    for (b in data) {
-        r.append(hexCode[b.toInt() shr 4 and 0xF])
-        r.append(hexCode[b.toInt() and 0xF])
-    }
-    return r.toString().lowercase()
-}
