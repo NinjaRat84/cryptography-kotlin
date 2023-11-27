@@ -1,16 +1,17 @@
-name: Build branch
-on:
-  workflow_dispatch:
-  push:
-    branches-ignore:
-      - main
-      - dev
-      - kotlin-eap/*
+name: Build TEST
+on: push
 
 jobs:
   build:
-    uses: ./.github/workflows/run-build.yml
-  default-tests:
-    uses: ./.github/workflows/run-tests-default.yml
-  compatibility-tests:
-    uses: ./.github/workflows/run-tests-compatibility.yml
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'ubuntu-latest', 'macos-latest', 'windows-latest' ]
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/setup-gradle
+      - uses: gradle/gradle-build-action@v2
+        with:
+          build-root-directory: tests-publication
+          arguments: build --continue
