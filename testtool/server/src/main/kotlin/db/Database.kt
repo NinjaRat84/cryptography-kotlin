@@ -32,7 +32,7 @@ internal fun Database.initializeTables(): Database {
 }
 
 internal fun mergeDatabases(folder: Path, outputName: String): Path {
-    val outputPath = folder.resolve("${outputName}.db")
+    val outputPath = folder.createDirectories().resolve("${outputName}.db")
     val inputs = folder.listDirectoryEntries().map(::Database)
     val output = Database(outputPath).initializeTables()
     inputs.forEach { input ->
