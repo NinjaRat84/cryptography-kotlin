@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2023-2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 import org.jetbrains.kotlin.gradle.*
@@ -11,6 +11,8 @@ plugins {
 }
 
 kotlin {
+    explicitApi()
+
     jvmToolchain(8)
 
     jvm()
@@ -91,7 +93,7 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                api(libs.kotlinx.coroutines.core)
+                api(projects.api)
             }
         }
         val ktorMain by getting {

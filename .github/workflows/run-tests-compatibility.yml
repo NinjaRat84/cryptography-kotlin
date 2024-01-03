@@ -60,17 +60,17 @@ jobs:
           project-path: "cryptography-providers-tests-compatibility:"
           additional-arguments: -Ptests.compatibility.step=Generate -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}
 
-      - name: Dump testtool server-storage
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: |
-            dumpTesttoolServerStorage
-            -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}
+      #      - name: Dump testtool server-storage
+      #        uses: gradle/gradle-build-action@v2
+      #        with:
+      #          arguments: |
+      #            dumpTesttoolServerStorage
+      #            -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}
       - name: Upload testtool server-storage dump
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: compatibility-tests-data
-          path: build/testtool/server-storage-dump/*.zip
+          name: compatibility-tests-data-${{ matrix.os }}-${{ matrix.target }}
+          path: build/testtool/server-storage/*.db
           if-no-files-found: error
 
   validate:
@@ -108,15 +108,16 @@ jobs:
           cache-read-only: true
 
       - name: Download testtool server-storage dump
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: compatibility-tests-data
-          path: build/testtool/server-storage-dump
+          pattern: compatibility-tests-data-*
+          path: build/testtool/server-storage
+          merge-multiple: true
 
-      - name: Restore testtool server-storage
-        uses: gradle/gradle-build-action@v2
-        with:
-          arguments: restoreTesttoolServerStorage
+      #      - name: Restore testtool server-storage
+      #        uses: gradle/gradle-build-action@v2
+      #        with:
+      #          arguments: restoreTesttoolServerStorage
 
       - name: Run tests
         if: ${{ !startsWith(matrix.target, 'android-') }}
@@ -136,3 +137,31 @@ jobs:
           api-level: ${{ matrix.api-level }}
           project-path: "cryptography-providers-tests-compatibility:"
           additional-arguments: -Ptests.compatibility.step=Validate -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}
+
+  merge:
+    needs: [ generate ]
+    runs-on: 'ubuntu-latest'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-gradle
+        with:
+          cache-read-only: true
+
+      - name: Download testtool server-storage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: compatibility-tests-data-*
+          path: build/testtool/server-storage
+          merge-multiple: true
+
+      - name: Restore testtool server-storage
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: mergeTesttoolServerStorage
+
+      - name: Upload testtool server-storage
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-compatibility-tests-data
+          path: build/testtool/server-storage/all.db
+          if-no-files-found: error

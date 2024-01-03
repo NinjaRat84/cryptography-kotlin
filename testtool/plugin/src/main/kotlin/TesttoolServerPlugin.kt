@@ -1,10 +1,11 @@
 /*
- * Copyright (c) 2023 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2023-2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package dev.whyoleg.cryptography.testtool.plugin
 
 import com.android.build.gradle.internal.tasks.*
+import dev.whyoleg.cryptography.testtool.server.*
 import org.gradle.api.*
 import org.gradle.api.file.*
 import org.gradle.api.provider.*
@@ -14,7 +15,7 @@ import org.gradle.api.tasks.testing.*
 import org.gradle.kotlin.dsl.*
 import org.jetbrains.kotlin.gradle.dsl.*
 
-open class TesttoolServerPlugin : Plugin<Project> {
+public open class TesttoolServerPlugin : Plugin<Project> {
 
     override fun apply(target: Project): Unit = with(target) {
         val serverStorage = configureRootProject(rootProject)
@@ -59,6 +60,14 @@ open class TesttoolServerPlugin : Plugin<Project> {
 
         tasks.register<Delete>("cleanTesttool") {
             delete(buildDir)
+        }
+
+        tasks.register("mergeTesttoolServerStorage") {
+            it.onlyIf { instanceId.isPresent }
+
+            it.doFirst {
+                mergeTesttoolServerStorage("all", serverStorageDir.get().asFile.toPath())
+            }
         }
 
         tasks.register<Zip>("dumpTesttoolServerStorage") {

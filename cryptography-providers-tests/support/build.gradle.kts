@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2023-2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 import ckbuild.*
@@ -29,7 +29,7 @@ kotlin {
         commonMain.dependencies {
             api(projects.cryptographyCore)
             api(libs.kotlinx.coroutines.test)
-            api(libs.kotlinx.serialization.json)
+            api(libs.kotlinx.serialization.core)
         }
         jsMain.dependencies {
             implementation(projects.cryptographyProviderWebcrypto)

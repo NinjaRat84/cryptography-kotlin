@@ -1,18 +1,14 @@
 /*
- * Copyright (c) 2023 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
+ * Copyright (c) 2023-2024 Oleg Yukhnevich. Use of this source code is governed by the Apache 2.0 license.
  */
 
 package dev.whyoleg.cryptography.providers.tests.compatibility.api
 
 import dev.whyoleg.cryptography.providers.tests.support.*
+import dev.whyoleg.cryptography.testtool.api.*
 import dev.whyoleg.cryptography.testtool.client.*
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.serialization.*
-import kotlinx.serialization.descriptors.*
-import kotlinx.serialization.encoding.*
-import kotlinx.serialization.json.*
-import kotlinx.serialization.modules.*
-import kotlin.io.encoding.*
 import kotlin.reflect.*
 
 class ServerApi(
@@ -21,39 +17,13 @@ class ServerApi(
     private val logger: TestLogger,
 ) : CompatibilityApi() {
     private fun api(storageName: String): CompatibilityStorageApi = ServerStorageApi(algorithm, context, storageName, logger)
-    override val keys: CompatibilityStorageApi = api("keys")
-    override val keyPairs: CompatibilityStorageApi = api("key-pairs")
-    override val digests: CompatibilityStorageApi = api("digests")
-    override val signatures: CompatibilityStorageApi = api("signatures")
-    override val ciphers: CompatibilityStorageApi = api("ciphers")
+    override val keys: CompatibilityStorageApi = api("key")
+    override val keyPairs: CompatibilityStorageApi = api("key-pair")
+    override val digests: CompatibilityStorageApi = api("digest")
+    override val signatures: CompatibilityStorageApi = api("signature")
+    override val ciphers: CompatibilityStorageApi = api("cipher")
 }
 
-private object Base64ByteArraySerializer : KSerializer<ByteArray> {
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Base64", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): ByteArray {
-        return Base64.decode(decoder.decodeString())
-    }
-
-    override fun serialize(encoder: Encoder, value: ByteArray) {
-        encoder.encodeString(Base64.encode(value))
-    }
-}
-
-private val json = Json {
-    encodeDefaults = true
-    prettyPrint = true
-    useAlternativeNames = false
-    serializersModule = SerializersModule {
-        contextual(Base64ByteArraySerializer)
-    }
-}
-
-@Serializable
-private class Payload<T>(
-    val context: TestContext,
-    val content: T,
-)
 
 private class ServerStorageApi(
     private val algorithm: String,
@@ -61,43 +31,52 @@ private class ServerStorageApi(
     storageName: String,
     logger: TestLogger,
 ) : CompatibilityStorageApi(storageName, logger) {
-    private val cache = mutableMapOf<KType, KSerializer<Any?>>()
+    private class ActorsContext(
+        val currentActorId: TesttoolActorId,
+        val contexts: Map<TesttoolActorId, TestContext>,
+    )
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> serializer(type: KType): KSerializer<T> =
-        cache.getOrPut(type) { json.serializersModule.serializer(type) } as KSerializer<T>
-
-    private fun <T> encode(value: T, type: KType): ByteArray =
-        json.encodeToString(
-            Payload.serializer(serializer(type)),
-            Payload(context, value)
-        ).encodeToByteArray()
-
-    private fun <T> decode(id: String, bytes: ByteArray, type: KType): TestContent<T> {
-        val payload = json.decodeFromString(
-            Payload.serializer<T>(serializer(type)),
-            bytes.decodeToString()
+    @OptIn(DelicateCoroutinesApi::class)
+    private val actorsContext = GlobalScope.async {
+        ActorsContext(
+            TesttoolClient.saveActor(
+                platform = TesttoolSerializer.encodeToJson(TestPlatform.serializer(), context.platform),
+                provider = TesttoolSerializer.encodeToJson(TestProvider.serializer(), context.provider)
+            ),
+            TesttoolClient.getAllActors().toList().associate {
+                it.id to TestContext(
+                    TesttoolSerializer.decodeFromJson(TestPlatform.serializer(), it.platform),
+                    TesttoolSerializer.decodeFromJson(TestProvider.serializer(), it.provider)
+                )
+            }
         )
-        return TestContent(id, payload.content, payload.context)
     }
 
     override suspend fun <T : TestParameters> saveParameters(parameters: T, type: KType): String {
-        return TesttoolClient.Compatibility.saveParameters(algorithm, storageName, encode(parameters, type))
+        val actorId = actorsContext.await().currentActorId
+        val content = TesttoolSerializer.encodeToJson(type, parameters)
+        return TesttoolClient.saveMetadata(actorId, algorithm, storageName, content)
     }
 
     override suspend fun <T : TestParameters> getParameters(type: KType): List<TestContent<T>> {
-        return TesttoolClient.Compatibility.getParameters(algorithm, storageName).map { (id, bytes) ->
-            decode<T>(id, bytes, type)
+        return TesttoolClient.getAllMetadatas(algorithm, storageName).map {
+            val content = TesttoolSerializer.decodeFromJson<T>(type, it.content)
+            val context = actorsContext.await().contexts.getValue(it.createdBy)
+            TestContent(it.id, content, context)
         }.toList()
     }
 
     override suspend fun <T : TestData> saveData(parametersId: TestParametersId, data: T, type: KType): String {
-        return TesttoolClient.Compatibility.saveData(algorithm, storageName, parametersId.value, encode(data, type))
+        val actorId = actorsContext.await().currentActorId
+        val content = TesttoolSerializer.encodeToJson(type, data)
+        return TesttoolClient.saveData(actorId, parametersId.value, content)
     }
 
     override suspend fun <T : TestData> getData(parametersId: TestParametersId, type: KType): List<TestContent<T>> {
-        return TesttoolClient.Compatibility.getData(algorithm, storageName, parametersId.value).map { (id, bytes) ->
-            decode<T>(id, bytes, type)
+        return TesttoolClient.getAllDatas(parametersId.value).map {
+            val content = TesttoolSerializer.decodeFromJson<T>(type, it.content)
+            val context = actorsContext.await().contexts.getValue(it.createdBy)
+            TestContent(it.id, content, context)
         }.toList()
     }
 }
