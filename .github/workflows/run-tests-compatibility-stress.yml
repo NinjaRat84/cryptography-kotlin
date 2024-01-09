@@ -1,0 +1,121 @@
+name: Run compatibility stress tests
+on:
+  workflow_dispatch:
+  workflow_call:
+
+concurrency:
+  group: compatibility-stress-tests
+  cancel-in-progress: false
+
+jobs:
+  generate-stress:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      # TODO: may be run openssl tests only with prebuilt?
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        target: [ 'jvmAll', 'js', 'native' ]
+        include:
+          - os: 'macos-latest'
+            target: 'macos'
+          - os: 'macos-latest'
+            target: 'ios'
+          - os: 'windows-latest'
+            target: 'native'
+          - os: 'macos-latest'
+            target: 'connectedAndroid'
+            android-api-level: 33
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-gradle
+        with:
+          cache-read-only: true
+
+      - if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          release: false
+          install: mingw-w64-x86_64-openssl
+
+      - name: Run tests
+        if: ${{ matrix.target != 'connectedAndroid' }}
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: ${{ matrix.target }}ProviderTest -Pckbuild.providerTests.step=compatibility.generateStress -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}-${{ matrix.android-api-level }} --continue
+
+      - name: Run tests (android)
+        if: ${{ matrix.target == 'connectedAndroid' }}
+        uses: ./.github/actions/run-android-emulator-tests
+        with:
+          api-level: ${{ matrix.android-api-level }}
+          test-reports-classifier: 'compatibility-stress-generate'
+          arguments: ${{ matrix.target }}ProviderTest -Pckbuild.providerTests.step=compatibility.generateStress -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}-${{ matrix.android-api-level }} --continue
+
+      - name: Dump testtool server-storage
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: |
+            dumpTesttoolServerStorage
+            -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}-${{ matrix.android-api-level }}
+      - name: Upload testtool server-storage dump
+        uses: actions/upload-artifact@v3
+        with:
+          name: compatibility-stress-tests-data
+          path: build/testtool/server-storage-dump
+          if-no-files-found: error
+
+  validate-stress:
+    needs: [ generate-stress ]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ 'ubuntu-latest' ]
+        target: [ 'jvmAll', 'js', 'native' ]
+        include:
+          - os: 'macos-latest'
+            target: 'macos'
+          - os: 'macos-latest'
+            target: 'ios'
+          - os: 'windows-latest'
+            target: 'native'
+          - os: 'macos-latest'
+            target: 'connectedAndroid'
+            android-api-level: 33
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-gradle
+        with:
+          cache-read-only: true
+
+      - if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          release: false
+          install: mingw-w64-x86_64-openssl
+
+      - name: Download testtool server-storage dump
+        uses: actions/download-artifact@v3
+        with:
+          name: compatibility-stress-tests-data
+          path: build/testtool/server-storage-dump
+
+      - name: Restore testtool server-storage
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: restoreTesttoolServerStorage
+
+      - name: Run tests
+        if: ${{ matrix.target != 'connectedAndroid' }}
+        uses: gradle/gradle-build-action@v2
+        with:
+          arguments: ${{ matrix.target }}ProviderTest -Pckbuild.providerTests.step=compatibility.validate -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}-${{ matrix.android-api-level }} --continue
+
+      - name: Run tests (android)
+        if: ${{ matrix.target == 'connectedAndroid' }}
+        uses: ./.github/actions/run-android-emulator-tests
+        with:
+          api-level: ${{ matrix.android-api-level }}
+          test-reports-classifier: 'compatibility-stress-validate'
+          arguments: ${{ matrix.target }}ProviderTest -Pckbuild.providerTests.step=compatibility.validate -Ptesttool.instanceId=${{ matrix.os }}-${{ matrix.target }}-${{ matrix.android-api-level }} --continue

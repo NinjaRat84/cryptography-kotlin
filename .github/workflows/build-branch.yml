@@ -8,10 +8,8 @@ on:
       - kotlin-eap/*
 
 jobs:
-  checks:
-    uses: ./.github/workflows/run-checks.yml
+  compatibility-tests:
+    uses: ./.github/workflows/run-tests-compatibility.yml
 
-  publish:
-    needs: [ checks ]
-    uses: ./.github/workflows/publish-test.yml
-    secrets: inherit
+  compatibility-stress-tests:
+    uses: ./.github/workflows/run-tests-compatibility-stress.yml

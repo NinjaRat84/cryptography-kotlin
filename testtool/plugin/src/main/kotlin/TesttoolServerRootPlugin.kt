@@ -21,6 +21,7 @@ open class TesttoolServerRootPlugin : Plugin<Project> {
 
         tasks.register<Zip>("dumpTesttoolServerStorage") {
             onlyIf { instance.instanceId.isPresent }
+            isZip64 = true
 
             archiveFileName.set(instance.instanceId.map { "$it.zip" })
             destinationDirectory.set(instance.serverStorageDumpDir)
