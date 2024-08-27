@@ -22,17 +22,21 @@ tasks.register<Copy>("mkdocsCopy") {
     rename { "${documentation.moduleName.get()}.md" }
 }
 
-tasks.withType<DokkaTaskPartial>().configureEach {
+extensions.configure<DokkaExtension>("dokka") {
     moduleName.set(documentation.moduleName)
-    // we don't suppress inherited members explicitly as without it classes like RSA.OAEP don't show functions like keyGenerator
-    suppressInheritedMembers.set(false)
-    failOnWarning.set(true)
+    // TODO: report, those flags are configured on `publication` but affects `module` - ???
+    dokkaPublications.configureEach {
+        // we don't suppress inherited members explicitly as without it classes like RSA.OAEP don't show functions like keyGenerator
+        suppressInheritedMembers.set(false)
+        failOnWarning.set(true)
+    }
     dokkaSourceSets.configureEach {
-        if (documentation.includes.isPresent) includes.from(documentation.includes)
+        // TODO: report, if to pass just `README.md` it will use file from root of the project
+        if (documentation.includes.isPresent) includes.from(file(documentation.includes))
         reportUndocumented.set(false) // set true later
         sourceLink {
             localDirectory.set(rootDir)
-            remoteUrl.set(URI("https://github.com/whyoleg/cryptography-kotlin/tree/${version}/").toURL())
+            remoteUrl.set(URI("https://github.com/whyoleg/cryptography-kotlin/tree/${version}/"))
             remoteLineSuffix.set("#L")
         }
     }
