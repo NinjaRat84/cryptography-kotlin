@@ -46,7 +46,7 @@ kotlin {
         }
         // other targets don't support `compileOnly` dependencies
         named("nonJvmMain").dependencies {
-            api(libs.kotlinx.serialization.core)
+            implementation(libs.kotlinx.serialization.core)
         }
     }
 }
