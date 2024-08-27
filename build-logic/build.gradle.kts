@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation(libs.kotlin.gradle.plugin)
     implementation(libs.kotlin.dokka.gradle.plugin)
+    implementation(libs.kotlin.dokka.core)
     implementation(libs.kotlinx.bcv.gradle.plugin)
     implementation(libs.kotlinx.kover.gradle.plugin)
     implementation(libs.android.gradle.plugin)
