@@ -4,11 +4,15 @@
 
 import ckbuild.documentation.*
 import org.jetbrains.dokka.gradle.*
+import org.jetbrains.dokka.gradle.formats.*
 import java.net.*
 
-plugins {
-    id("org.jetbrains.dokka")
-}
+// TODO: revert to id after DGPv2 will be default
+//  for now it's needed not to have a warning during build
+//plugins {
+//    id("org.jetbrains.dokka")
+//}
+plugins.apply(DokkaHtmlPlugin::class)
 
 val documentation = extensions.create<DocumentationExtension>("documentation").apply {
     moduleName.convention(project.name)

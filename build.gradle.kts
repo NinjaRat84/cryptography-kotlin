@@ -40,7 +40,7 @@ tasks.register<Copy>("mkdocsCopy") {
 }
 
 tasks.register<Exec>("mkdocsBuild") {
-    dependsOn(tasks.dokkaGenerate)
+    dependsOn(tasks.dokkaGeneratePublicationHtml)
     dependsOn(tasks.named("mkdocsCopy"))
     dependsOn(subprojects.mapNotNull { it.tasks.findByName("mkdocsCopy") })
     commandLine("mkdocs", "build", "--clean", "--strict")
