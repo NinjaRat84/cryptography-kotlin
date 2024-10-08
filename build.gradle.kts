@@ -23,8 +23,14 @@ plugins.withType<NodeJsRootPlugin> {
     }
 }
 
-tasks.dokkaHtmlMultiModule {
+tasks.dokkaGeneratePublicationHtml {
     outputDirectory.set(file("docs/api"))
+}
+
+dependencies {
+    ckbuild.artifacts.forEach {
+        dokka(project(":$it"))
+    }
 }
 
 tasks.register<Copy>("mkdocsCopy") {
@@ -34,7 +40,7 @@ tasks.register<Copy>("mkdocsCopy") {
 }
 
 tasks.register<Exec>("mkdocsBuild") {
-    dependsOn(tasks.dokkaHtmlMultiModule)
+    dependsOn(tasks.dokkaGeneratePublicationHtml)
     dependsOn(tasks.named("mkdocsCopy"))
     dependsOn(subprojects.mapNotNull { it.tasks.findByName("mkdocsCopy") })
     commandLine("mkdocs", "build", "--clean", "--strict")
