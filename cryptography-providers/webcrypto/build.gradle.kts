@@ -25,9 +25,14 @@ kotlin {
         freeCompilerArgs.add("-Xexpect-actual-classes")
     }
 
-    sourceSets.commonMain.dependencies {
-        api(projects.cryptographyCore)
-        implementation(projects.cryptographyProviderBase)
+    sourceSets {
+        commonMain.dependencies {
+            api(projects.cryptographyCore)
+            implementation(projects.cryptographyProviderBase)
+        }
+        wasmJsMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-browser:0.2")
+        }
     }
 }
 

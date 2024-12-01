@@ -26,4 +26,10 @@ kotlin {
             }
         }
     }
+
+    sourceSets {
+        wasmJsMain.dependencies {
+            implementation("org.jetbrains.kotlinx:kotlinx-browser:0.2")
+        }
+    }
 }
