@@ -1,11 +1,11 @@
 name: Kotlin EAP CI
 on:
+  push:
   workflow_dispatch:
     inputs:
       kotlinVersion:
         description: 'Kotlin version'
         required: false
-        default: '2.1.0-dev-+'
 
   schedule:
     - cron: '0 0 * * MON'
@@ -16,13 +16,16 @@ defaults:
 
 jobs:
   kotlin-eap:
+    name: ${{ matrix.os }}/${{ matrix.kotlin-version }}/${{ matrix.try-next }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ 'ubuntu-latest', 'macos-latest', 'windows-latest' ]
-        kotlin-version: [ '', '${{ inputs.kotlinVersion }}' ]
         try-next: [ 'true', 'false' ]
+        kotlin-version:
+          - '' # uses current project version
+          - ${{ inputs.kotlinVersion || '2.1.20-dev-+' }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-environment
@@ -31,7 +34,7 @@ jobs:
 
       - run: >
           ./gradlew
-          build publishToMavenLocal
+          build publishToMavenLocal linkAll
           --continue
           -Pckbuild.skipTestTasks=true
           -Pckbuild.warningsAsErrors=false
