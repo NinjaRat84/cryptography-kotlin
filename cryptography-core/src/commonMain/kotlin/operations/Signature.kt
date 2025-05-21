@@ -44,12 +44,22 @@ public interface SignatureGenerator {
 }
 
 @SubclassOptInRequired(CryptographyProviderApi::class)
+public interface SignatureUpdaterGenerator {
+    public fun createSignUpdaterFunction(): SignUpdaterFunction
+}
+
+@SubclassOptInRequired(CryptographyProviderApi::class)
 public interface SignFunction : UpdateFunction {
     public fun signIntoByteArray(destination: ByteArray, destinationOffset: Int = 0): Int
     public fun signToByteArray(): ByteArray
     public fun sign(): ByteString {
         return signToByteArray().asByteString()
     }
+}
+
+@SubclassOptInRequired(CryptographyProviderApi::class)
+public interface SignUpdaterFunction : UpdateFunction {
+    public fun process(source: ByteArray, iv: ByteArray)
 }
 
 @SubclassOptInRequired(CryptographyProviderApi::class)

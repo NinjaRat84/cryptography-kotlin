@@ -70,6 +70,20 @@ public interface AES<K : AES.Key> : CryptographyAlgorithm {
         public interface Key : AES.Key {
             public fun signatureGenerator(): SignatureGenerator
             public fun signatureVerifier(): SignatureVerifier
+            public fun signatureUpdater(): SignatureUpdaterGenerator
+        }
+    }
+
+    @SubclassOptInRequired(CryptographyProviderApi::class)
+    public interface MyCMAC : AES<MyCMAC.Key> {
+        override val id: CryptographyAlgorithmId<MyCMAC> get() = Companion
+
+        public companion object : CryptographyAlgorithmId<MyCMAC>("AES-CMAC")
+
+        @SubclassOptInRequired(CryptographyProviderApi::class)
+        public interface Key : AES.Key {
+            public fun signatureGenerator(): SignatureGenerator
+            public fun signatureVerifier(): SignatureVerifier
         }
     }
 

@@ -12,22 +12,27 @@ internal class JdkMacSignature(
     state: JdkCryptographyState,
     private val key: JSecretKey,
     algorithm: String,
-) : SignatureGenerator, SignatureVerifier {
+) : SignatureGenerator, SignatureUpdaterGenerator,  SignatureVerifier {
     private val mac = state.mac(algorithm)
 
     private fun createFunction() = JdkMacFunction(mac.borrowResource { init(key) })
 
     override fun createSignFunction(): SignFunction = createFunction()
     override fun createVerifyFunction(): VerifyFunction = createFunction()
+    override fun createSignUpdaterFunction(): SignUpdaterFunction = createFunction()
 }
 
 private class JdkMacFunction(
     private val mac: Pooled.Resource<JMac>,
-) : SignFunction, VerifyFunction {
+) : SignFunction, SignUpdaterFunction, VerifyFunction {
     override fun update(source: ByteArray, startIndex: Int, endIndex: Int) {
         checkBounds(source.size, startIndex, endIndex)
         val mac = mac.access()
         mac.update(source, startIndex, endIndex - startIndex)
+    }
+
+    override fun process(source: ByteArray, iv: ByteArray) {
+        TODO("Not yet implemented")
     }
 
     override fun signIntoByteArray(destination: ByteArray, destinationOffset: Int): Int {

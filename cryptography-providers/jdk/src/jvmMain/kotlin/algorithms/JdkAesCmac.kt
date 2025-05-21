@@ -30,6 +30,7 @@ private class JdkAesCmacKey(
 
     override fun signatureGenerator(): SignatureGenerator = signature
     override fun signatureVerifier(): SignatureVerifier = signature
+    override fun signatureUpdater(): SignatureUpdaterGenerator = signature
 
     override fun encodeToByteArrayBlocking(format: AES.Key.Format): ByteArray = when (format) {
         AES.Key.Format.JWK -> error("$format is not supported")

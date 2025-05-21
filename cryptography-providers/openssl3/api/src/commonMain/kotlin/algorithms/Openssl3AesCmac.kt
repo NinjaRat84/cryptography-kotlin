@@ -27,6 +27,7 @@ internal object Openssl3AesCmac : AES.CMAC, Openssl3Aes<AES.CMAC.Key>() {
         private val signature = AesCmacSignature(algorithm = algorithm, key = key)
         override fun signatureGenerator(): SignatureGenerator = signature
         override fun signatureVerifier(): SignatureVerifier = signature
+        override fun signatureUpdater(): SignatureUpdaterGenerator = signature
     }
 }
 
@@ -35,7 +36,7 @@ internal object Openssl3AesCmac : AES.CMAC, Openssl3Aes<AES.CMAC.Key>() {
 private class AesCmacSignature(
     private val algorithm: String,
     private val key: ByteArray,
-) : SignatureGenerator, SignatureVerifier {
+) : SignatureGenerator, SignatureUpdaterGenerator, SignatureVerifier {
     private val mac = checkError(EVP_MAC_fetch(null, "CMAC", null))
     private fun createFunction() = AesCmacFunction(
         key = key,
@@ -45,20 +46,20 @@ private class AesCmacSignature(
 
     override fun createSignFunction(): SignFunction = createFunction()
     override fun createVerifyFunction(): VerifyFunction = createFunction()
+    override fun createSignUpdaterFunction(): SignUpdaterFunction = createFunction()
 
+    @OptIn(UnsafeNumber::class)
     private class AesCmacFunction(
         private val key: ByteArray,
         private val algorithm: String,
         private val context: Resource<CPointer<EVP_MAC_CTX>>,
-    ) : SignFunction, VerifyFunction, SafeCloseable(SafeCloseAction(context, AutoCloseable::close)) {
+    ) : SignFunction, SignUpdaterFunction, VerifyFunction, SafeCloseable(SafeCloseAction(context, AutoCloseable::close)) {
 
         init {
             reset()
         }
 
-        @OptIn(UnsafeNumber::class)
         override fun update(source: ByteArray, startIndex: Int, endIndex: Int) {
-            // Implementation for updating the CMAC with the provided data
             checkBounds(source.size, startIndex, endIndex)
             val context = context.access()
             source.usePinned {
@@ -79,7 +80,6 @@ private class AesCmacSignature(
             return signature.size
         }
 
-        @OptIn(UnsafeNumber::class)
         override fun signToByteArray(): ByteArray {
             val context = context.access()
             val macSize = EVP_MAC_CTX_get_mac_size(context).convert<Int>()
@@ -97,7 +97,6 @@ private class AesCmacSignature(
             return out
         }
 
-        @OptIn(UnsafeNumber::class)
         override fun reset() {
             val context = context.access()
             memScoped {
@@ -123,7 +122,32 @@ private class AesCmacSignature(
             }
         }
 
-        @OptIn(UnsafeNumber::class)
+        override fun process(source: ByteArray, iv: ByteArray) {
+            // Update the MAC with the source data
+            update(source, 0, source.size)
+
+            // Retrieve the MAC size and prepare the buffer
+            val macSize = EVP_MAC_CTX_get_mac_size(context.access()).convert<Int>()
+            val macBuffer = ByteArray(macSize)
+
+            // Finalize the MAC computation
+            macBuffer.usePinned {
+                checkError(
+                    EVP_MAC_final(
+                        ctx = context.access(),
+                        out = it.addressOf(0).reinterpret(),
+                        outl = null,
+                        outsize = macSize.convert()
+                    )
+                )
+            }
+
+            // XOR the MAC with the IV
+            for (i in macBuffer.indices) {
+                iv[i] = (macBuffer[i].toInt() xor iv[i].toInt()).toByte()
+            }
+        }
+
         override fun tryVerify(signature: ByteArray, startIndex: Int, endIndex: Int): Boolean {
             checkBounds(signature.size, startIndex, endIndex)
 
